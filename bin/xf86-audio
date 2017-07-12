@@ -1,0 +1,215 @@
+#!/bin/sh -eu
+
+
+################################################################################
+#
+# VARIABLES
+#
+################################################################################
+
+ACTION=
+INTERVAL="3"
+DEVICE=""
+MIXER="Master"
+COMMAND=
+
+
+
+################################################################################
+#
+# FUNCTIONS
+#
+################################################################################
+
+print_usage_head() {
+	printf "Usage: %s [OPTIONS] -c COMMAND\n" "${0}"
+	printf "       %s -a\n"  "${0}"
+	printf "       %s -h\n"  "${0}"
+}
+print_usage() {
+	print_usage_head
+
+	printf "\nThis script is a wrapper for amixer that will change the volume\n"
+	printf "and send those changes to a notification daemine.\n\n"
+
+	printf "COMMAND:\n"
+	printf "  -c up           Increase volume.\n"
+	printf "  -c down         Decrease volume.\n"
+	printf "  -c mute         Mute volume.\n"
+	printf "  -c toggle       Toggle mute/unmute.\n\n"
+
+	printf "OPTIONS:\n"
+	printf "   -i <interval>  Change the interval for volume up/down.\n"
+	printf "                  The default is 3 (percent).\n\n"
+
+	printf "   -D <device>    Specify a device, such as 'pulse'.\n"
+	printf "                  If omitted using 'default'.\n\n"
+
+	printf "   -M <mixer>     If omitted using 'Master'.\n"
+	printf "                  Use -a to show all mixers.\n\n"
+
+	printf "HELP:\n"
+	printf "   -a             Show all mixers.\n"
+	printf "   -h             Show help.\n"
+}
+
+get_all_mixers() {
+	 amixer | grep -E '^\w.*$' | grep -Eo "'.*'" | sed "s/'//g"
+}
+
+
+
+################################################################################
+#
+# COMMAND LINE ARGUMENTS
+#
+################################################################################
+
+############################################################
+# Parse arguments
+############################################################
+while [ "${#}" -gt 0  ]; do
+	case "${1}" in
+		-c)
+			shift
+			if [ "${1}" != "up" ] && [ "${1}" != "down" ] && [ "${1}" != "mute" ] && [ "${1}" != "toggle" ]; then
+				printf "Error, -c must either be 'up', 'down', 'mute' or 'toggle'.\n"
+				print_usage_head
+				exit 1
+			fi
+			ACTION="${1}"
+			;;
+		-i)
+			shift
+			if ! printf "%d" "${1}" >/dev/null 2>&1; then
+				printf "Error, the value for -i must be an integer.\n"
+				print_usage_head
+				exit 1
+			fi
+			INTERVAL="${1}"
+			;;
+		-D)
+			shift
+			DEVICE="${1}"
+			;;
+		-M)
+			shift
+			MIXER="${1}"
+			;;
+		-a)
+			get_all_mixers
+			exit
+			;;
+		-h)
+			print_usage
+			exit
+			;;
+		*)
+			printf "Unknown argument: %s\n" "${1}"
+			print_usage_head
+			exit 1
+			;;
+	esac
+	shift
+done
+
+############################################################
+# Check required arguments
+############################################################
+if [ "${ACTION}" = "" ]; then
+	printf "Error, -c is mandatory.\n"
+	print_usage_head
+	exit 1
+fi
+
+
+
+################################################################################
+#
+# MAIN ENTRYPOINT
+#
+################################################################################
+
+############################################################
+# Build command
+############################################################
+
+# Use specific device?
+if [ "${DEVICE}" != "" ]; then
+	DEVICE="-D ${DEVICE}"
+fi
+
+# Build command
+if [ "${ACTION}" = "up" ]; then
+	COMMAND="amixer ${DEVICE} sset ${MIXER} '${INTERVAL}%+' unmute"
+elif [ "${ACTION}" = "down" ]; then
+	COMMAND="amixer ${DEVICE} sset ${MIXER} '${INTERVAL}%-' unmute"
+elif [ "${ACTION}" = "mute" ]; then
+	COMMAND="amixer ${DEVICE} sset ${MIXER} mute"
+else
+	COMMAND="amixer ${DEVICE} sset ${MIXER} toggle"
+fi
+
+
+############################################################
+# Run command
+############################################################
+
+OUTPUT="$( eval "${COMMAND}" )"
+
+
+############################################################
+# Parse output
+############################################################
+
+PERCENT="$( echo "${OUTPUT}" | grep -m 1 "%]" | cut -d "[" -f2 | cut -d "%" -f1 )"
+MUTED=0
+if ! amixer get "${MIXER}" | grep -q '\[on\]'; then
+	MUTED=1
+fi
+
+
+############################################################
+# Get notification icon/text
+############################################################
+
+if [ "${MUTED}" = "1" ]; then
+	ICON_STRING="notification-audio-volume-muted"
+	TEXT_STRING="vol: muted"
+	PERCENT=0
+else
+	if [ "${PERCENT}" -lt "33" ]; then
+		ICON_STRING="notification-audio-volume-low"
+	else
+		if [ "${PERCENT}" -lt "67" ]; then
+			ICON_STRING="notification-audio-volume-medium"
+		else
+			ICON_STRING="notification-audio-volume-high"
+		fi
+	fi
+
+
+	i=$(( PERCENT / 10 ))
+	j=$(( 10 - i ))
+	TEXT_STRING="vol: "
+	while [ $i -gt 0 ]; do
+		TEXT_STRING="${TEXT_STRING}–"
+		i=$(( i - 1 ))
+	done
+	TEXT_STRING="${TEXT_STRING}|"
+	while [ $j -gt 0 ]; do
+		TEXT_STRING="${TEXT_STRING}–"
+		j=$(( j - 1 ))
+	done
+
+	TEXT_STRING="${TEXT_STRING} ${PERCENT}%"
+
+fi
+
+
+############################################################
+# Send notification
+############################################################
+
+notify-send "${TEXT_STRING}" -i ${ICON_STRING} -h int:value:${PERCENT} -h string:synchronous:volume
+exit

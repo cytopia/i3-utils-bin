@@ -1,0 +1,237 @@
+#!/bin/sh -eu
+
+
+###
+### Defaults
+###
+DEFAULT_BACKGROUND="0"
+DEFAULT_SCALE="3"
+DEFAULT_OVERLAY_PATH=""
+DEFAULT_NOTIFY_DAEMON="dunst"
+
+###
+### Credits
+###
+MY_VERSION="v0.1"
+MY_DATE="2017-07-05"
+MY_URL="https://github.com/cytopia/i3-utils"
+
+###
+### System variables
+###
+MY_NAME="$( basename "${0}" )"
+MY_LOG_DIR="${HOME}/.log"
+MY_LOG_FILE="${MY_LOG_DIR}/${MY_NAME}.err"
+MY_DATE="$( date '+%Y-%m-%d' )"
+MY_TIME="$( date '+%H:%M:%S' )"
+
+if [ ! -d "${MY_LOG_DIR}" ]; then
+	mkdir -p "${MY_LOG_DIR}"
+fi
+if [ ! -f "${MY_LOG_FILE}" ]; then
+	touch "${MY_LOG_FILE}"
+fi
+if [ ! -w "${MY_LOG_FILE}" ]; then
+	chmod u+w "${MY_LOG_FILE}"
+fi
+
+
+
+################################################################################
+##
+##  F U N C T I O N S
+##
+################################################################################
+
+# Test if argument is an integer.
+#
+# @param  mixed
+# @return integer	0: is int | 1: not an int
+isint() {
+	echo "${1}" | grep -Eq '^([0-9]|[1-9][0-9]*)$'
+}
+
+
+error() {
+	printf "%s\n" "${1}" >&2
+	printf "[%s] [%s] %s\n" "${MY_DATE}" "${MY_TIME}" "${1}" >> "${MY_LOG_FILE}"
+}
+
+print_usage() {
+	echo "Usage: ${MY_NAME} [-b] [-s <1-100>] [-o <path>] [-n <name>]"
+	echo "       ${MY_NAME} -h"
+	echo "       ${MY_NAME} -v"
+	echo
+	echo "Helper script for i3lock."
+	echo
+	echo "  -b            (optional) Background mode."
+	echo "                The whole script is put into background so that you can"
+	echo "                run another script afterwards, such as system suspend/hibernat."
+	echo "                The default is to run in foreground mode."
+	echo
+	echo "  -s <1-100>    (optional) Scale factor in percent."
+	echo "                The default is 3."
+	echo
+	echo "  -o <path>     (optional) Path to an image to overlay onto lockscreen."
+	echo "                The default is not to use an overlay image."
+	echo
+	echo "  -n <name>     (optional) Binary name of the notification daemon to suspend"
+	echo "                while the screen is locked. It should be suspended so"
+	echo "                that no notifications will be displayed while you are"
+	echo "                away with a locked screen."
+	echo "                The default is 'dunst'."
+	echo
+	echo "  -h            Show this help screen."
+	echo "  -v            Show version information."
+}
+
+print_version() {
+	printf "%s %s (%s) by cytopia\n" "${MY_NAME}" "${MY_VERSION}" "${MY_DATE}"
+	printf "%s\n" "${MY_URL}"
+}
+
+lock_screen() {
+	# 1-100%
+	_scale_factor="${1}"
+	# Path to overlay image
+	_overlay_path="${2}"
+	# i3lock foreground mode?
+	_i3lock_background="${3}"
+
+	_upscale_factor="$(( 100 * 100 / _scale_factor ))"
+	_screenshot="$( mktemp --suffix='.png' )"
+
+	scrot --quality 100 --silent "${_screenshot}"
+	convert ${_screenshot} -scale ${_scale_factor}% -scale ${_upscale_factor}% ${_screenshot}
+
+	# Add overlay (optional)
+	if [ -f "${_overlay_path}" ]; then
+		convert "${_screenshot}" "${_overlay_path}" -gravity center -geometry +0+0 -composite -matte "${_screenshot}"
+	fi
+
+	# Lock screen
+	if [ "${_i3lock_background}" = "1" ]; then
+		i3lock --show-failed-attempts --image="${_screenshot}"
+	else
+		i3lock --nofork --show-failed-attempts --image="${_screenshot}"
+	fi
+}
+suspend_notify() {
+	_notify_daemon="${1}"
+
+	# Suspend notification daemon
+	pkill -u "${USER}" -USR1 "${_notify_daemon}"
+}
+resume_notify() {
+	_notify_daemon="${1}"
+
+	# Wait until i3lock is closed (screen not locked anymore)
+	while pidof i3lock >/dev/null 2>&1; do
+		sleep 1
+	done
+	# Resume notification daemon
+	pkill -u "${USER}" -USR2 "${_notify_daemon}"
+}
+
+
+
+################################################################################
+##
+##  E N T R Y   P O I N T
+##
+################################################################################
+
+BACKGROUND="${DEFAULT_BACKGROUND}"
+SCALE="${DEFAULT_SCALE}"
+OVERLAY_PATH="${DEFAULT_OVERLAY_PATH}"
+NOTIFY_DAEMON="${DEFAULT_NOTIFY_DAEMON}"
+
+while [ $# -gt 0 ]; do
+	case "${1}" in
+		-b)
+			BACKGROUND="1"
+			;;
+		-s)
+			shift
+			if ! isint "${1}"; then
+				error "Argument for -s: Is not an integer: ${1}"
+				exit 1
+			fi
+			if [ "${1}" -lt 0 ] || [ "${1}" -gt 100 ]; then
+				error "Argument for -s: Must be between 1 and 100. Specified: ${1}"
+				exit 1
+			fi
+			SCALE="${1}"
+			;;
+
+		-o)
+			shift
+			if [ ! -f "${1}" ]; then
+				error "Argument for -o: File does not exist: ${1}"
+				exit 1
+			fi
+			OVERLAY_PATH="${1}"
+			;;
+		-n)
+			shift
+			NOTIFY_DAEMON="${1}"
+			;;
+		-h)
+			print_usage
+			exit 0
+			;;
+		-v)
+			print_version
+			exit 0
+			;;
+		*)
+			error "Invalid argument supplied: ${1}"
+			exit 1
+			;;
+	esac
+	shift
+done
+
+
+###
+### Error Checking
+###
+if ! command -v scrot >/dev/null 2>&1; then
+	error "binary 'scrot' not found but required."
+	exit 1
+fi
+if ! command -v convert >/dev/null 2>&1; then
+	error "binary 'convert' not found but required."
+	exit 1
+fi
+if ! command -v i3lock >/dev/null 2>&1; then
+	error "binary 'i3lock' not found but required."
+	exit 1
+fi
+
+
+# Dunst shows notifications in lock screen by default.
+# In order to prevent that, we need to suspend the dunst
+# process prior locking and resume after the lock process
+# finishes.
+
+
+# Suspend notification daemon
+suspend_notify "${NOTIFY_DAEMON}"
+
+# Lock screen foreground or background task
+# depening on the command line argument
+lock_screen "${SCALE}" "${OVERLAY_PATH}" "${BACKGROUND}"
+
+# Resume notification service.
+# In case of background service, the function will be brought
+# into background itself and the script finishes.
+# This way you can start other services after this script
+# such as suspend to RAM/Disk and during wake-up, you will still
+# have a locked screen with resuming notification during unlock
+if [ "${BACKGROUND}" = "1" ]; then
+	resume_notify "${NOTIFY_DAEMON}" &
+else
+	resume_notify "${NOTIFY_DAEMON}"
+fi
+

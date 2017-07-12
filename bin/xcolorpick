@@ -1,0 +1,55 @@
+#!/bin/sh -eu
+
+###
+### System variables
+###
+MY_NAME="$( basename "${0}" )"
+MY_LOG_DIR="${HOME}/.log"
+MY_LOG_FILE="${MY_LOG_DIR}/${MY_NAME}.err"
+MY_DATE="$( date '+%Y-%m-%d' )"
+MY_TIME="$( date '+%H:%M:%S' )"
+
+if [ ! -d "${MY_LOG_DIR}" ]; then
+	mkdir -p "${MY_LOG_DIR}"
+fi
+if [ ! -f "${MY_LOG_FILE}" ]; then
+	touch "${MY_LOG_FILE}"
+fi
+if [ ! -w "${MY_LOG_FILE}" ]; then
+	chmod u+w "${MY_LOG_FILE}"
+fi
+
+
+
+################################################################################
+##
+##  F U N C T I O N S
+##
+################################################################################
+error() {
+	printf "%s\n" "${1}" >&2
+	printf "[%s] [%s] %s\n" "${MY_DATE}" "${MY_TIME}" "${1}" >> "${MY_LOG_FILE}"
+}
+
+
+
+################################################################################
+##
+##  E N T R Y   P O I N T
+##
+################################################################################
+
+if ! command -v grabc >/dev/null 2>&1; then
+	error "Binary 'grabc' not available"
+	exit 1
+fi
+
+if ! command -v zenity >/dev/null 2>&1; then
+	error "Binary 'zenity' not available."
+	exit 1
+fi
+
+
+color="$( grabc )"
+
+zenity --color-selection --color="${color}"

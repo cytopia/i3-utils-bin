@@ -1,0 +1,170 @@
+#!/bin/sh
+
+
+################################################################################
+#
+# VARIABLES
+#
+################################################################################
+
+ACTION=
+INTERVAL="5"
+COMMAND=
+
+
+
+################################################################################
+#
+# FUNCTIONS
+#
+################################################################################
+
+print_usage_head() {
+	printf "Usage: %s [OPTIONS] -c COMMAND\n" "${0}"
+	printf "       %s -a\n"  "${0}"
+	printf "       %s -h\n"  "${0}"
+}
+print_usage() {
+	print_usage_head
+
+	printf "\nThis script is a wrapper to turn up/down the display brightness\n"
+	printf "and send those changes to a notification daemine.\n\n"
+
+	printf "COMMAND:\n"
+	printf "  -c up           Increase volume.\n"
+	printf "  -c down         Decrease volume.\n"
+
+	printf "OPTIONS:\n"
+	printf "   -i <interval>  Change the interval for brightnes up/down.\n"
+	printf "                  The default is 5 .\n\n"
+
+	printf "HELP:\n"
+	printf "   -h             Show help.\n"
+}
+
+
+
+################################################################################
+#
+# COMMAND LINE ARGUMENTS
+#
+################################################################################
+
+############################################################
+# Parse arguments
+############################################################
+while [ "${#}" -gt 0  ]; do
+	case "${1}" in
+		-c)
+			shift
+			if [ "${1}" != "up" ] && [ "${1}" != "down" ]; then
+				printf "Error, -c must either be 'up' or 'down'.\n"
+				print_usage_head
+				exit 1
+			fi
+			ACTION="${1}"
+			;;
+		-i)
+			shift
+			if ! printf "%d" "${1}" >/dev/null 2>&1; then
+				printf "Error, the value for -i must be an integer.\n"
+				print_usage_head
+				exit 1
+			fi
+			INTERVAL="${1}"
+			;;
+		-h)
+			print_usage
+			exit
+			;;
+		*)
+			printf "Unknown argument: %s\n" "${1}"
+			print_usage_head
+			exit 1
+			;;
+	esac
+	shift
+done
+
+############################################################
+# Check required arguments
+############################################################
+if [ "${ACTION}" = "" ]; then
+	printf "Error, -c is mandatory.\n"
+	print_usage_head
+	exit 1
+fi
+
+
+
+################################################################################
+#
+# MAIN ENTRYPOINT
+#
+################################################################################
+
+############################################################
+# Build command
+############################################################
+
+if [ "${ACTION}" = "up" ]; then
+	COMMAND="xbacklight -inc ${INTERVAL}"
+else
+	COMMAND="xbacklight -dec ${INTERVAL}"
+fi
+
+
+############################################################
+# Run command
+############################################################
+
+eval "${COMMAND}"
+
+
+############################################################
+# Parse output
+############################################################
+
+CURRENT="$( printf "%d\n" "$(xbacklight -get)" 2>/dev/null )"
+MAX="100"
+PERCENT=$(( 100 * CURRENT / MAX))
+
+
+############################################################
+# Get notification icon/text
+############################################################
+
+if [ ${PERCENT} -eq 0 ]; then
+	ICON_STRING="notification-display-brightness-off"
+elif [ ${PERCENT} -lt 33 ]; then
+	ICON_STRING="notification-display-brightness-low"
+elif [ ${PERCENT} -lt 66 ]; then
+	ICON_STRING="notification-display-brightness-medium"
+elif [ ${PERCENT} -lt 99 ]; then
+	ICON_STRING="notification-display-brightness-high"
+else
+	ICON_STRING="notification-display-brightness-full"
+fi
+TEXT_STRING="Display brightness: ${PERCENT}%"
+
+i=$(( PERCENT / 10 ))
+j=$(( 10 - i ))
+TEXT_STRING="mon: "
+while [ $i -gt 0 ]; do
+	TEXT_STRING="${TEXT_STRING}–"
+	i=$(( i - 1 ))
+done
+TEXT_STRING="${TEXT_STRING}|"
+while [ $j -gt 0 ]; do
+	TEXT_STRING="${TEXT_STRING}–"
+	j=$(( j - 1 ))
+done
+
+TEXT_STRING="${TEXT_STRING} ${PERCENT}%"
+
+############################################################
+# Send notification
+############################################################
+
+notify-send "${TEXT_STRING}" -i ${ICON_STRING} -h int:value:${PERCENT} -h string:synchronous:brightness
+exit

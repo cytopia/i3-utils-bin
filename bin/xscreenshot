@@ -1,0 +1,138 @@
+#!/bin/sh -eu
+
+###
+### Defaults
+###
+DEFAULT_TARGET_PATH="${HOME}/Desktop"
+
+
+###
+### Credits
+###
+MY_VERSION="v0.1"
+MY_DATE="2017-07-05"
+MY_URL="https://github.com/cytopia/i3-utils"
+
+
+###
+### System variables
+###
+MY_NAME="$( basename "${0}" )"
+MY_LOG_DIR="${HOME}/.log"
+MY_LOG_FILE="${MY_LOG_DIR}/${MY_NAME}.err"
+MY_DATE="$( date '+%Y-%m-%d' )"
+MY_TIME="$( date '+%H:%M:%S' )"
+
+if [ ! -d "${MY_LOG_DIR}" ]; then
+	mkdir -p "${MY_LOG_DIR}"
+fi
+if [ ! -f "${MY_LOG_FILE}" ]; then
+	touch "${MY_LOG_FILE}"
+fi
+if [ ! -w "${MY_LOG_FILE}" ]; then
+	chmod u+w "${MY_LOG_FILE}"
+fi
+
+################################################################################
+##
+##  F U N C T I O N S
+##
+################################################################################
+error() {
+	printf "%s\n" "${1}" >&2
+	printf "[%s] [%s] %s\n" "${MY_DATE}" "${MY_TIME}" "${1}" >> "${MY_LOG_FILE}"
+}
+
+print_usage() {
+	echo "Usage: ${MY_NAME} [-m <mode>] [-p <path>]"
+	echo "       ${MY_NAME} -h"
+	echo "       ${MY_NAME} -v"
+	echo
+	echo "Helper script for scrot."
+	echo
+	echo "  -m <mode>     (optional) What kind of screenshot to take."
+	echo "                  -m window     Screenshot of active window"
+	echo "                  -m selection  Screenshot of selected area"
+	echo "                  -m multi      Screenshot of all monitoris"
+	echo "                Default: current monitor only"
+	echo
+	echo "  -p <path>     (optional) Specify path to save screenshots to."
+	echo "                Default: ${DEFAULT_TARGET_PATH}"
+	echo
+	echo "  -h            Show this help screen."
+	echo "  -v            Show version information."
+}
+
+print_version() {
+	printf "%s %s (%s) by cytopia\n" "${MY_NAME}" "${MY_VERSION}" "${MY_DATE}"
+	printf "%s\n" "${MY_URL}"
+}
+
+
+
+################################################################################
+##
+##  E NT R Y   P O I N T
+##
+################################################################################
+
+TARGET_PATH="${DEFAULT_TARGET_PATH}"
+MODE=""
+
+while [ $# -gt 0 ]; do
+	case "${1}" in
+		-m)
+			shift
+			if [ "${1}" != "window" ] && [ "${1}" != "selection" ] && [ "${1}" != "multi" ]; then
+				error "Argument for -m: '${1}' is wrong. Should be one of the following: window, selection or multi"
+				exit 1
+			fi
+			MODE="${1}"
+			;;
+		-p)
+			shift
+			if [ ! -d "${1}" ]; then
+				error "Argument for -p: Directory does not exist: ${1}"
+				exit 1
+			fi
+			TARGET_PATH="${1}"
+			;;
+		-h)
+			print_usage
+			exit 0
+			;;
+		-v)
+			print_version
+			exit 0
+			;;
+		*)
+			error "Invalid argument supplied: ${1}"
+			exit 1
+			;;
+	esac
+	shift
+done
+
+
+###
+### Error Checking
+###
+if ! command -v scrot >/dev/null 2>&1; then
+	error "binary 'scrot' not found but required."
+	exit 1
+fi
+
+
+###
+### Run
+###
+if [ "${MODE}" = "window" ]; then
+	scrot --silent --quality 100 --focused 'Screenshot %Y-%m-%d %H:%M:%S [window] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+elif [ "${MODE}" = "selection" ]; then
+	scrot --silent --quality 100 --select 'Screenshot %Y-%m-%d %H:%M:%S [selection] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+elif [ "${MODE}" = "multi" ]; then
+	scrot --silent --quality 100 --multidisp 'Screenshot %Y-%m-%d %H:%M:%S [all] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+else
+	scrot --silent --quality 100 'Screenshot %Y-%m-%d %H:%M:%S ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+fi
+
