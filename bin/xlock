@@ -209,6 +209,12 @@ if ! command -v i3lock >/dev/null 2>&1; then
 	exit 1
 fi
 
+# Make sure not to start another i3lock instance,
+# if it is already running.
+if pidof i3lock >/dev/null 2>&1; then
+	error "i3lock is already running, aborting."
+	exit 1
+fi
 
 # Dunst shows notifications in lock screen by default.
 # In order to prevent that, we need to suspend the dunst
