@@ -31,6 +31,8 @@ Binary utilities for a minimalistic [i3](https://github.com/i3/i3) setup.
 | Tool | Description |
 |------|-------------|
 | [xcolorpick](bin/xcolorpick) | Zenity based RGB color picker for any pixel on your screen. |
+| [ximage](bin/ximage)         | Wrapper for [sxiv](https://github.com/muennich/sxiv) that allows for opening multiple files automatically within a directory. |
+| [ximage.desktop](applications/ximage.desktop) | Desktop application file for `ximage` registering png, jpg, jpeg and gif. |
 | [xkiller](bin/xkiller)       | Wrapper for `xkill`. Xkill itself cannot be terminated when started from a hotkey. That is where `xkiller` comes into play. It can be terminated simply starting it again. (via hotkey, dunst, rofi or via the command line). |
 | [xlock](bin/xlock)           | Wrapper for `i3lock` with blurred screenshot and optional custom overlay which will also suspend any notifications during lock and can be run in the background without locking the script itself, so that you can run another script afterwards (such as [system-suspend](bin/system-suspend)). |
 | [xscreenshot](bin/xscreenshot) | Wrapper for `scrot`. |
@@ -46,6 +48,7 @@ Binary utilities for a minimalistic [i3](https://github.com/i3/i3) setup.
 * [i3lock](https://github.com/i3/i3lock)
 * [notify-send](https://man.cx/notify-send)
 * [scrot](https://man.cx/scrot)
+* [sxiv](https://github.com/muennich/sxiv)
 * [systemd](https://github.com/systemd/systemd) or [ibus](https://github.com/ibus/ibus)
 * [xbacklight](https://linux.die.net/man/1/xbacklight)
 * [xkill](https://linux.die.net/man/1/xkill)
@@ -116,3 +119,8 @@ bindsym $mod+Sys_Req exec "xscreenshot -m selection"
 # Screenshot (active window)
 bindsym $mod+Shift+Sys_Req exec "xscreenshot -m window"
 ```
+
+## Credits
+
+* [ranger](https://github.com/ranger/ranger): From where i am using `ximage` (original script is [rifle_sxiv.sh](https://github.com/ranger/ranger/blob/master/examples/rifle_sxiv.sh))
+

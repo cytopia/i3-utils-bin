@@ -22,9 +22,12 @@ install:
 	install -m 0755 bin/xcolorpick       /usr/local/bin/xcolorpick
 	install -m 0755 bin/xf86-audio       /usr/local/bin/xf86-audio
 	install -m 0755 bin/xf86-backlight   /usr/local/bin/xf86-backlight
+	install -m 0755 bin/ximage           /usr/local/bin/ximage
 	install -m 0755 bin/xkiller          /usr/local/bin/xkiller
 	install -m 0755 bin/xlock            /usr/local/bin/xlock
 	install -m 0755 bin/xscreenshot      /usr/local/bin/xscreenshot
+
+	install -m 0644 applications/ximage.desktop /usr/share/applications/ximage.desktop
 
 
 uninstall:
@@ -39,3 +42,5 @@ uninstall:
 	rm -f /usr/local/bin/xkiller
 	rm -f /usr/local/bin/xlock
 	rm -f /usr/local/bin/xscreenshot
+
+	rm -f /usr/share/applications/ximage.desktop
