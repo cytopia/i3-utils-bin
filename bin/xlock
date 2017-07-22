@@ -8,6 +8,7 @@ DEFAULT_BACKGROUND="0"
 DEFAULT_SCALE="3"
 DEFAULT_OVERLAY_PATH=""
 DEFAULT_NOTIFY_DAEMON="dunst"
+DEFAULT_MUTE="0"
 
 ###
 ### Credits
@@ -58,7 +59,7 @@ error() {
 }
 
 print_usage() {
-	echo "Usage: ${MY_NAME} [-b] [-s <1-100>] [-o <path>] [-n <name>]"
+	echo "Usage: ${MY_NAME} [-b] [-m] [-s <1-100>] [-o <path>] [-n <name>]"
 	echo "       ${MY_NAME} -h"
 	echo "       ${MY_NAME} -v"
 	echo
@@ -69,6 +70,9 @@ print_usage() {
 	echo "                run another script afterwards, such as system suspend/hibernat."
 	echo "                The default is to run in foreground mode."
 	echo
+	echo "  -m            (optional) Mute sound before locking the screen."
+	echo
+	echo "                The whole script is put into background so that you can"
 	echo "  -s <1-100>    (optional) Scale factor in percent."
 	echo "                The default is 3."
 	echo
@@ -132,7 +136,12 @@ resume_notify() {
 	# Resume notification daemon
 	pkill -u "${USER}" -USR2 "${_notify_daemon}"
 }
-
+mute_sound() {
+	if ! _err="$( amixer sset 'Master' mute 2>&1 >/dev/null )"; then
+		error "${_err}"
+		exit 1
+	fi
+}
 
 
 ################################################################################
@@ -145,11 +154,15 @@ BACKGROUND="${DEFAULT_BACKGROUND}"
 SCALE="${DEFAULT_SCALE}"
 OVERLAY_PATH="${DEFAULT_OVERLAY_PATH}"
 NOTIFY_DAEMON="${DEFAULT_NOTIFY_DAEMON}"
+MUTE="${DEFAULT_MUTE}"
 
 while [ $# -gt 0 ]; do
 	case "${1}" in
 		-b)
 			BACKGROUND="1"
+			;;
+		-m)
+			MUTE="1"
 			;;
 		-s)
 			shift
@@ -208,6 +221,12 @@ if ! command -v i3lock >/dev/null 2>&1; then
 	error "binary 'i3lock' not found but required."
 	exit 1
 fi
+if [ "${MUTE}" = "1" ]; then
+	if ! command -v amixer >/dev/null 2>&1; then
+		error "binary 'amixer' not found but required when using -m option."
+		exit 1
+	fi
+fi
 
 # Make sure not to start another i3lock instance,
 # if it is already running.
@@ -225,6 +244,11 @@ fi
 # Suspend notification daemon
 suspend_notify "${NOTIFY_DAEMON}"
 
+# Mute sound if desired
+if [ "${MUTE}" = "1" ]; then
+	mute_sound
+fi
+
 # Lock screen foreground or background task
 # depening on the command line argument
 lock_screen "${SCALE}" "${OVERLAY_PATH}" "${BACKGROUND}"
@@ -240,4 +264,3 @@ if [ "${BACKGROUND}" = "1" ]; then
 else
 	resume_notify "${NOTIFY_DAEMON}"
 fi
-

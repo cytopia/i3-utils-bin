@@ -4,7 +4,7 @@
 ### Defaults
 ###
 DEFAULT_TARGET_PATH="${HOME}/Desktop"
-
+DEFAULT_COMMAND="scrot"
 
 ###
 ### Credits
@@ -44,12 +44,14 @@ error() {
 }
 
 print_usage() {
-	echo "Usage: ${MY_NAME} [-m <mode>] [-p <path>]"
+	echo "Usage: ${MY_NAME} [-c scrot|maim] [-m <mode>] [-p <path>]"
 	echo "       ${MY_NAME} -h"
 	echo "       ${MY_NAME} -v"
 	echo
 	echo "Helper script for scrot."
 	echo
+	echo "  -c scrot|maim (optional) Use scrot or main for screenshots."
+	echo "                Default: scrot"
 	echo "  -m <mode>     (optional) What kind of screenshot to take."
 	echo "                  -m window     Screenshot of active window"
 	echo "                  -m selection  Screenshot of selected area"
@@ -77,10 +79,19 @@ print_version() {
 ################################################################################
 
 TARGET_PATH="${DEFAULT_TARGET_PATH}"
+COMMAND="${DEFAULT_COMMAND}"
 MODE=""
 
 while [ $# -gt 0 ]; do
 	case "${1}" in
+		-c)
+			shift
+			if [ "${1}" != "scrot" ] && [ "${1}" != "maim" ]; then
+				error "Argument for -c: '${1}' is wrong. Should be: scrot or maim"
+				exit 1
+			fi
+			COMMAND="${1}"
+			;;
 		-m)
 			shift
 			if [ "${1}" != "window" ] && [ "${1}" != "selection" ] && [ "${1}" != "multi" ]; then
@@ -117,22 +128,52 @@ done
 ###
 ### Error Checking
 ###
-if ! command -v scrot >/dev/null 2>&1; then
-	error "binary 'scrot' not found but required."
+if ! command -v "${COMMAND}" >/dev/null 2>&1; then
+	error "binary '${COMMAND}' not found but required."
 	exit 1
+fi
+if [ "${COMMAND}" = "maim" ]; then
+	if ! command -v slop >/dev/null 2>&1; then
+		error "binary 'slop' not found but required for maim."
+		exit 1
+	fi
+	if ! command -v xdotool >/dev/null 2>&1; then
+		error "binary 'xdotool' not found but required for maim."
+		exit 1
+	fi
 fi
 
 
+
 ###
-### Run
+### Run (scrot)
 ###
-if [ "${MODE}" = "window" ]; then
-	scrot --silent --quality 100 --focused 'Screenshot %Y-%m-%d %H:%M:%S [window] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
-elif [ "${MODE}" = "selection" ]; then
-	scrot --silent --quality 100 --select 'Screenshot %Y-%m-%d %H:%M:%S [selection] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
-elif [ "${MODE}" = "multi" ]; then
-	scrot --silent --quality 100 --multidisp 'Screenshot %Y-%m-%d %H:%M:%S [all] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
-else
-	scrot --silent --quality 100 'Screenshot %Y-%m-%d %H:%M:%S ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+if [ "${COMMAND}" = "scrot" ]; then
+
+	if [ "${MODE}" = "window" ]; then
+		scrot --silent --quality 100 --focused 'Screenshot %Y-%m-%d %H-%M-%S [window] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+	elif [ "${MODE}" = "selection" ]; then
+		scrot --silent --quality 100 --select 'Screenshot %Y-%m-%d %H-%M-%S [selection] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+	elif [ "${MODE}" = "multi" ]; then
+		scrot --silent --quality 100 --multidisp 'Screenshot %Y-%m-%d %H-%M-%S [all] ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+	else
+		scrot --silent --quality 100 'Screenshot %Y-%m-%d %H-%M-%S ($wx$h).png' --exec "mv '\$f' '${TARGET_PATH}'"
+	fi
+
+###
+### Run (maim)
+###
+elif [ "${COMMAND}" = "maim" ]; then
+
+	if [ "${MODE}" = "window" ]; then
+		maim --windowid="$(xdotool getactivewindow)" "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ) [window].png"
+	elif [ "${MODE}" = "selection" ]; then
+		maim --select "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ) [selection].png"
+	elif [ "${MODE}" = "multi" ]; then
+		maim "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ) [all].png"
+	else
+		maim "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ).png"
+	fi
+
 fi
 

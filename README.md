@@ -35,7 +35,7 @@ Binary utilities for a minimalistic [i3](https://github.com/i3/i3) setup.
 | [ximage.desktop](applications/ximage.desktop) | Desktop application file for `ximage` registering png, jpg, jpeg and gif. |
 | [xkiller](bin/xkiller)       | Wrapper for `xkill`. Xkill itself cannot be terminated when started from a hotkey. That is where `xkiller` comes into play. It can be terminated simply starting it again. (via hotkey, dunst, rofi or via the command line). |
 | [xlock](bin/xlock)           | Wrapper for `i3lock` with blurred screenshot and optional custom overlay which will also suspend any notifications during lock and can be run in the background without locking the script itself, so that you can run another script afterwards (such as [system-suspend](bin/system-suspend)). |
-| [xscreenshot](bin/xscreenshot) | Wrapper for `scrot`. |
+| [xscreenshot](bin/xscreenshot) | Wrapper for `scrot` or `maim`. |
 
 
 ## Integration
@@ -47,7 +47,7 @@ Binary utilities for a minimalistic [i3](https://github.com/i3/i3) setup.
 * [grabc](http://www.muquit.com/muquit/software/grabc/grabc.html)
 * [i3lock](https://github.com/i3/i3lock)
 * [notify-send](https://man.cx/notify-send)
-* [scrot](https://man.cx/scrot)
+* [scrot](https://man.cx/scrot) or [maim](https://github.com/naelstrof/maim)
 * [sxiv](https://github.com/muennich/sxiv)
 * [systemd](https://github.com/systemd/systemd) or [ibus](https://github.com/ibus/ibus)
 * [xbacklight](https://linux.die.net/man/1/xbacklight)
