@@ -166,7 +166,7 @@ if [ "${COMMAND}" = "scrot" ]; then
 elif [ "${COMMAND}" = "maim" ]; then
 
 	if [ "${MODE}" = "window" ]; then
-		maim --windowid="$(xdotool getactivewindow)" "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ) [window].png"
+		maim --window="$(xdotool getactivewindow)" "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ) [window].png"
 	elif [ "${MODE}" = "selection" ]; then
 		maim --select "${TARGET_PATH}/Screenshot $( date '+%Y-%m-%d %H-%M-%S' ) [selection].png"
 	elif [ "${MODE}" = "multi" ]; then
