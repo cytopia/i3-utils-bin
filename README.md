@@ -37,6 +37,12 @@ Binary utilities for a minimalistic [i3](https://github.com/i3/i3) setup.
 | [xlock](bin/xlock)           | Wrapper for `i3lock` with blurred screenshot and optional custom overlay which will also suspend any notifications during lock and can be run in the background without locking the script itself, so that you can run another script afterwards (such as [system-suspend](bin/system-suspend)). |
 | [xscreenshot](bin/xscreenshot) | Wrapper for `scrot` or `maim`. |
 
+#### Rofi/Dmenu tools
+
+| Tool | Description |
+|------|-------------|
+| [rcalc](bin/rcalc) | A wrapper for `qalc` adding the ability to syncronize every result accross all existing clipboards. |
+
 
 ## Integration
 
@@ -51,6 +57,7 @@ Binary utilities for a minimalistic [i3](https://github.com/i3/i3) setup.
 * [sxiv](https://github.com/muennich/sxiv)
 * [systemd](https://github.com/systemd/systemd) or [ibus](https://github.com/ibus/ibus)
 * [xbacklight](https://linux.die.net/man/1/xbacklight)
+* [xsel](https://github.com/kfish/xsel)
 * [xkill](https://linux.die.net/man/1/xkill)
 * [zenity](https://github.com/GNOME/zenity)
 
@@ -118,6 +125,13 @@ bindsym $mod+Sys_Req exec "xscreenshot -m selection"
 
 # Screenshot (active window)
 bindsym $mod+Shift+Sys_Req exec "xscreenshot -m window"
+
+
+###
+### Rofi calculator
+###
+
+bindsym $mod+space exec "exec rofi -show combi -combi-modi window,drun,run -modi combi,'calc:rcalc' -sidebar-mode"
 ```
 
 ## Credits
