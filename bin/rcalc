@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+#
+# Usage:
+#
+# $ echo 5 + 5 | rcalc
+# $ rcalc 5 + 5
+# $ rcalc
+
+# Be strict
+set -e
+set -u
+set -o pipefail
+
+
+# -------------------------------------------------------------------------------------------------
+# Globals
+# -------------------------------------------------------------------------------------------------
+
+CALCULATION=
+RESULT=
+OUTPUT=
+
+
+# -------------------------------------------------------------------------------------------------
+# Functions
+# -------------------------------------------------------------------------------------------------
+
+function calculate() {
+	local equation="${1}"
+	qalc +u8 -nocurrencies "${equation}"
+}
+
+function get_result() {
+	local calculation="${1}"
+	echo "${calculation}" | sed 's/^.*=\s//g'
+}
+
+function clipboard() {
+	local value="${1}"
+	if command -v xsel >/dev/null 2>&1; then
+		printf "%s" "${value}" | xsel -pi
+		printf "%s" "${value}" | xsel -si
+		printf "%s" "${value}" | xsel -bi
+	else
+		>&2 "[Warning] 'xsel' binary not available. Cannot copy value to clipboard."
+	fi
+}
+
+function print_usage() {
+	cat <<USAGE
+Usage: rcalc 5 + 5
+       echo 5 + 5 | rcalc
+       rcalc
+
+Description:
+
+rcalc is a wrapper to qalc that adds the ability to store each calculation result
+to the clipboard via xsel. All three clipboards will be synced: primary,
+secondary and clipboard.
+The purpose of rcalc is to be used with dmenu or rofi. You can use rcalc in three
+different ways:
+
+   1. Use command line arguments:
+      rcalc 10 * 5 / 2
+      rcalc 5 + 5
+
+   2. Pipe calculation into rcalc
+      echo "10 * 5 / 2" | rcalc
+      echo "5 +5" | rcalc
+
+   3. Use interactively
+      rcalc
+
+Options:
+
+-v,--version  Show version
+-h,--help     Show this help
+USAGE
+}
+
+function print_version() {
+	cat <<VERSION
+rcalc v0.1 by cytopia
+https://github.com/cytopia/i3-utils-bin
+VERSION
+}
+
+# -------------------------------------------------------------------------------------------------
+# Entrypoint
+# -------------------------------------------------------------------------------------------------
+
+###
+### Check for help or version
+###
+if [ "${#}" -eq "1" ]; then
+	if [ "${1}" = "-v" ] || [ "${1}" = "--version" ]; then
+		print_version
+		exit 0
+	elif [ "${1}" = "-h" ] || [ "${1}" = "--help" ]; then
+		print_usage
+		exit 0
+	fi
+fi
+
+
+###
+### Check for requirements
+###
+if ! command -v qalc >/dev/null 2>&1; then
+	>&2 "[Error] 'qalc' binary not available, but required."
+	exit 1
+fi
+
+
+###
+### Data was piped into this script
+###
+if [ -p /dev/stdin ]; then
+	while IFS= read line; do
+		CALCULATION="$( calculate "${line}" )"
+		RESULT="$( get_result "${CALCULATION}" )"
+		OUTPUT="${CALCULATION}"
+		# Store result into clipboard
+		clipboard "${RESULT}"
+		# Output result line
+		echo "${OUTPUT}"
+	done
+
+###
+### Data comes in via command line arguments
+###
+elif [ "${#}" -gt "0" ]; then
+	CALCULATION="$( calculate "${*}" )"
+	RESULT="$( get_result "${CALCULATION}" )"
+	OUTPUT="${CALCULATION}"
+	# Store result into clipboard
+	clipboard "${RESULT}"
+	# Output result line
+	echo "${OUTPUT}"
+
+###
+### Call without stdin and without command line args (make interactive)
+###
+else
+	exit 0
+	while read line </dev/tty ; do
+		CALCULATION="$( calculate "${line}" )"
+		RESULT="$( get_result "${CALCULATION}" )"
+		OUTPUT="${CALCULATION}"
+		# Store result into clipboard
+		clipboard "${RESULT}"
+		# Output result line
+		echo "${OUTPUT}"
+	done
+
+fi
