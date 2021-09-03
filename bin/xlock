@@ -105,11 +105,20 @@ lock_screen() {
 	_upscale_factor="$(( 100 * 100 / _scale_factor ))"
 	_screenshot="$( mktemp --suffix='.png' )"
 
-	scrot --quality 100 --silent "${_screenshot}"
+	# Ensure we do not abort here in case of ImageMagick error
+	if command -v maim >/dev/null 2>&1; then
+		echo "maim"
+		maim --quality 10 --delay=0.0  "${_screenshot}.jpg"
+	else
+		echo "scrot"
+		scrot --quality 100 --silent "${_screenshot}.jpg"
+	fi
+	mv "${_screenshot}.jpg" "${_screenshot}"
 	convert ${_screenshot} -scale ${_scale_factor}% -scale ${_upscale_factor}% ${_screenshot}
 
 	# Add overlay (optional)
 	if [ -f "${_overlay_path}" ]; then
+		# Ensure we do not abort here in case of ImageMagick error
 		convert "${_screenshot}" "${_overlay_path}" -gravity center -geometry +0+0 -composite -matte "${_screenshot}"
 	fi
 
@@ -209,9 +218,11 @@ done
 ###
 ### Error Checking
 ###
-if ! command -v scrot >/dev/null 2>&1; then
-	error "binary 'scrot' not found but required."
-	exit 1
+if ! command -v maim >/dev/null 2>&1; then
+	if ! command -v scrot >/dev/null 2>&1; then
+		error "binary 'maim' or 'scrot' not found but required."
+		exit 1
+	fi
 fi
 if ! command -v convert >/dev/null 2>&1; then
 	error "binary 'convert' not found but required."
